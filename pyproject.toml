@@ -1,0 +1,25 @@
+[project]
+name = "rag-log-analyzer"
+version = "0.1.0"
+description = "Local log-case retrieval and troubleshooting analysis with LangChain, ChromaDB and Ollama"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "rag-log-analyzer contributors"}]
+requires-python = ">=3.10"
+dependencies = [
+  "langchain-core>=0.3,<1",
+  "langchain-text-splitters>=0.3,<1",
+  "langchain-ollama>=0.2,<1",
+  "langchain-chroma>=0.2,<1",
+  "chromadb>=0.5,<2",
+  "pydantic>=2.7,<3",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"

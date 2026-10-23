@@ -1,0 +1,216 @@
+[
+  {
+    "case_id": "LOG-0001",
+    "title": "Kubernetes Pod 因内存超限反复 OOMKilled",
+    "error_type": "OOMKilled",
+    "component": "kubernetes",
+    "severity": "critical",
+    "error_signature": "Back-off restarting failed container payment-api\nLast State: Terminated\nReason: OOMKilled\nExit Code: 137",
+    "symptom": "payment-api Pod 每 10-30 分钟重启一次，状态在 Running 与 CrashLoopBackOff 之间反复，节点整体内存仍有富余。",
+    "environment": {
+      "cluster": "Kubernetes 1.28",
+      "runtime": "containerd 1.7",
+      "app": "payment-api",
+      "node": "8C16G"
+    },
+    "root_cause": "容器 memory limit 只有 512Mi，但应用启动后常驻内存约 700Mi；报表导出接口还会一次性把 20 万行数据读入内存，触发 cgroup OOM，kubelet 将容器杀死并重启。",
+    "resolution": [
+      "执行 kubectl describe pod <pod> -n <ns>，确认 Last State 为 OOMKilled、Exit Code 为 137。",
+      "执行 kubectl top pod <pod> -n <ns>，并与监控中的 container_memory_working_set_bytes 峰值对照，确认峰值超过 limit。",
+      "临时把 resources.limits.memory 从 512Mi 调到 1Gi、requests.memory 调到 768Mi，滚动发布。",
+      "把报表导出改为分页查询或流式写出，避免一次性加载全量数据。",
+      "增加告警：container_memory_working_set_bytes / limit > 0.85 持续 5 分钟。"
+    ],
+    "verification": "观察 2 小时无重启，kubectl get pod 的 RESTARTS 不再增长，内存峰值稳定在 800Mi 以下。",
+    "tags": ["k8s", "oom", "crashloopbackoff", "memory"],
+    "source": "manual",
+    "updated_at": "2025-06-12"
+  },
+  {
+    "case_id": "LOG-0002",
+    "title": "Nginx 502 upstream prematurely closed connection",
+    "error_type": "502 Bad Gateway",
+    "component": "nginx",
+    "severity": "high",
+    "error_signature": "2025/06/10 09:12:33 [error] 812#0: *99321 upstream prematurely closed connection while reading response header from upstream, client: 10.0.3.15, server: api.example.com, request: \"POST /v1/orders HTTP/1.1\", upstream: \"http://10.0.8.21:8080/v1/orders\"",
+    "symptom": "订单接口偶发 502，集中在每天 09:10 和 14:10 批量任务触发时；后端服务本身没有重启。",
+    "environment": {
+      "gateway": "Nginx 1.24",
+      "upstream": "Java 17 / Spring Boot 3.2",
+      "deploy": "Kubernetes"
+    },
+    "root_cause": "后端在批量任务期间发生超过 30 秒的 Full GC 停顿，触发 Nginx proxy_read_timeout；同时 Nginx 到 upstream 的 keepalive 连接复用了已被后端关闭的连接，放大了 502。",
+    "resolution": [
+      "在 Nginx error.log 中按 upstream 地址和时间点聚合，确认 502 与后端 GC 日志中的 Full GC 时间重合。",
+      "检查后端 GC 日志与堆监控，确认老年代占用和 Full GC 次数。",
+      "临时把 proxy_read_timeout 从 30s 调到 60s，并开启 proxy_next_upstream error timeout http_502。",
+      "修复后端批量任务的内存占用或拆分批次，减少 Full GC 停顿。",
+      "让 Nginx keepalive_timeout 小于后端 keep-alive 超时，避免复用即将关闭的连接。"
+    ],
+    "verification": "压测批量任务期间 502 归零；Nginx error.log 不再出现 upstream prematurely closed；后端 Full GC 次数恢复到每天个位数。",
+    "tags": ["nginx", "502", "upstream", "gateway", "gc"],
+    "source": "manual",
+    "updated_at": "2025-06-15"
+  },
+  {
+    "case_id": "LOG-0003",
+    "title": "MySQL 事务死锁 Deadlock found when trying to get lock",
+    "error_type": "Deadlock",
+    "component": "mysql",
+    "severity": "high",
+    "error_signature": "ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction\n------------------------\nLATEST DETECTED DEADLOCK\n------------------------\n*** (1) TRANSACTION:\nUPDATE order_item SET status = 1 WHERE order_id = 10086;\n*** (1) WAITING FOR THIS LOCK TO BE GRANTED:\nRECORD LOCKS space id 128 page no 42 ... lock_mode X locks rec but not gap",
+    "symptom": "下单接口在促销高峰偶发 500，日志中出现 Deadlock，重试后多数成功；事务耗时约 2-4 秒。",
+    "environment": {
+      "db": "MySQL 8.0",
+      "isolation": "REPEATABLE-READ",
+      "app": "order-service"
+    },
+    "root_cause": "两个事务分别先更新 order 再更新 order_item，与另一条链路顺序相反；同时 order_item.order_id 缺少索引，导致锁扫描范围扩大，最终形成交叉等待。",
+    "resolution": [
+      "执行 SHOW ENGINE INNODB STATUS\\G，读取 LATEST DETECTED DEADLOCK 中两个事务的 SQL、等待锁和持有锁。",
+      "定位业务代码中的更新顺序，统一为“先 order 后 order_item”或按主键排序后批量更新。",
+      "为 order_item.order_id 增加索引，减少锁扫描范围。",
+      "缩短事务：把非数据库操作移出事务，避免事务内调用远程接口。",
+      "对死锁错误做有限次退避重试（如 3 次，指数退避），并记录重试指标。"
+    ],
+    "verification": "促销压测 30 分钟无 Deadlock；SHOW ENGINE INNODB STATUS 不再出现新的 LATEST DETECTED DEADLOCK；下单 P99 降到 800ms 以内。",
+    "tags": ["mysql", "deadlock", "transaction", "index"],
+    "source": "manual",
+    "updated_at": "2025-06-18"
+  },
+  {
+    "case_id": "LOG-0004",
+    "title": "Redis 内存达到 maxmemory 拒绝写入",
+    "error_type": "OOM command not allowed",
+    "component": "redis",
+    "severity": "high",
+    "error_signature": "OOM command not allowed when used memory > 'maxmemory'.",
+    "symptom": "用户登录后偶发跳回登录页；登录服务写入 session 时报错，Redis 监控显示内存持续贴近 2GB 上限。",
+    "environment": {
+      "redis": "7.2",
+      "maxmemory": "2gb",
+      "policy": "noeviction",
+      "usage": "session + 热点缓存"
+    },
+    "root_cause": "大量 session key 未设置 TTL，且缓存穿透导致空结果也被长期写入；maxmemory-policy 为 noeviction，内存达到上限后所有写命令直接报 OOM。",
+    "resolution": [
+      "执行 INFO memory 和 CONFIG GET maxmemory maxmemory-policy，确认 used_memory 与淘汰策略。",
+      "执行 redis-cli --bigkeys 和 SCAN 抽样，找出无 TTL 的大 key 与 session key。",
+      "为 session 设置合理 TTL（如 30 分钟），并清理确认无用的 key。",
+      "把 maxmemory-policy 调整为 allkeys-lru 或 volatile-lru，并评估业务可接受的淘汰范围。",
+      "对空结果缓存设置短 TTL，增加布隆过滤器或空值保护，避免缓存穿透。"
+    ],
+    "verification": "used_memory 回落到 1.2GB 以下；登录接口连续 1 小时无 OOM 报错；keyspace_hits 比例保持在 90% 以上。",
+    "tags": ["redis", "oom", "maxmemory", "session", "cache"],
+    "source": "manual",
+    "updated_at": "2025-06-20"
+  },
+  {
+    "case_id": "LOG-0005",
+    "title": "Java 应用 GC overhead limit exceeded",
+    "error_type": "OutOfMemoryError",
+    "component": "java",
+    "severity": "critical",
+    "error_signature": "java.lang.OutOfMemoryError: GC overhead limit exceeded\n\tat java.util.Arrays.copyOf(Arrays.java:3332)\n\tat com.example.report.ExportService.loadAll(ExportService.java:88)",
+    "symptom": "报表导出接口在数据量增长后频繁超时，随后整个应用不可用，日志出现 GC overhead limit exceeded。",
+    "environment": {
+      "jdk": "OpenJDK 17",
+      "heap": "-Xmx2g",
+      "app": "report-service",
+      "gc": "G1"
+    },
+    "root_cause": "ExportService.loadAll 一次性把 50 万条记录装入 ArrayList，堆内存长期接近上限，JVM 98% 的时间用于 GC 却只能回收不到 2% 的堆，最终抛出 OOM。",
+    "resolution": [
+      "在 OOM 时保留 -XX:+HeapDumpOnOutOfMemoryError 生成的 heap dump，使用 MAT 或 VisualVM 查看支配树。",
+      "确认大对象来自 ExportService.loadAll 的全量查询结果。",
+      "把导出改为分页查询 + 流式写出（如 SXSSFWorkbook 或 CSV 流），避免全量驻留内存。",
+      "短期可把 -Xmx 调到 4g 并观察，但不能替代代码修复。",
+      "开启 GC 日志并增加老年代使用率、Full GC 次数和耗时的告警。"
+    ],
+    "verification": "导出 50 万行时堆峰值低于 60%；Full GC 次数为 0；接口成功率 100%，P99 在 10 秒以内。",
+    "tags": ["java", "jvm", "oom", "gc", "heapdump"],
+    "source": "manual",
+    "updated_at": "2025-06-22"
+  },
+  {
+    "case_id": "LOG-0006",
+    "title": "cron 执行 Python 脚本报 ModuleNotFoundError",
+    "error_type": "ModuleNotFoundError",
+    "component": "python",
+    "severity": "medium",
+    "error_signature": "Traceback (most recent call last):\n  File \"/opt/app/jobs/sync.py\", line 3, in <module>\n    import requests\nModuleNotFoundError: No module named 'requests'",
+    "symptom": "手动执行脚本正常，crontab 定时任务每天凌晨失败；同一脚本在终端里用 python3 运行没有问题。",
+    "environment": {
+      "os": "Ubuntu 22.04",
+      "python": "3.11",
+      "venv": "/opt/app/venv",
+      "scheduler": "cron"
+    },
+    "root_cause": "crontab 中写的是 /usr/bin/python3，依赖安装在 /opt/app/venv；cron 的 PATH 与登录 shell 不同，导致加载了系统 Python 而不是虚拟环境。",
+    "resolution": [
+      "在 crontab 中改用虚拟环境的绝对路径：/opt/app/venv/bin/python /opt/app/jobs/sync.py。",
+      "或在脚本 shebang 中使用 #!/opt/app/venv/bin/python，并确保脚本有执行权限。",
+      "在脚本入口打印 sys.executable 和 sys.path，确认运行时解释器。",
+      "用 env -i /bin/sh -c '/opt/app/venv/bin/python /opt/app/jobs/sync.py' 模拟 cron 的最小环境做验证。",
+      "把依赖锁定到 requirements.txt，并在部署时用同一解释器执行 pip install -r。"
+    ],
+    "verification": "在 crontab 中手动触发一次任务，日志显示 sys.executable 为 /opt/app/venv/bin/python，任务退出码为 0。",
+    "tags": ["python", "cron", "venv", "modulenotfound", "path"],
+    "source": "manual",
+    "updated_at": "2025-06-25"
+  },
+  {
+    "case_id": "LOG-0007",
+    "title": "Docker 构建报 no space left on device",
+    "error_type": "No space left on device",
+    "component": "docker",
+    "severity": "high",
+    "error_signature": "failed to solve: process \"/bin/sh -c apt-get update && apt-get install -y curl\" did not complete successfully: write /var/lib/docker/overlay2/6f2c...: no space left on device",
+    "symptom": "CI 镜像构建突然全部失败；宿主机上 docker ps 正常，但无法拉取新镜像，构建缓存也无法写入。",
+    "environment": {
+      "os": "Ubuntu 22.04",
+      "docker": "26.1",
+      "storage_driver": "overlay2",
+      "disk": "/var/lib/docker 独立分区 100G"
+    },
+    "root_cause": "/var/lib/docker 所在分区使用率达到 100%；大量 dangling images、构建缓存和未轮转的容器 json.log 占用空间，导致 overlay2 无法写入新层。",
+    "resolution": [
+      "执行 df -h /var/lib/docker 和 docker system df，确认分区与各类对象占用。",
+      "清理停止的容器、dangling images 和构建缓存：docker container prune、docker image prune、docker builder prune。",
+      "检查 /var/lib/docker/containers/*/*-json.log，配置 log-driver 的 max-size 和 max-file 做日志轮转。",
+      "长期方案：迁移 docker data-root 到更大的磁盘，或扩容分区。",
+      "增加磁盘使用率告警（85% 预警、90% 严重），并定期执行清理任务。"
+    ],
+    "verification": "df -h 显示 /var/lib/docker 使用率降到 60% 以下；重新执行 docker build 成功；新容器日志按 100MB × 3 轮转。",
+    "tags": ["docker", "disk", "overlay2", "build", "log-rotation"],
+    "source": "manual",
+    "updated_at": "2025-06-28"
+  },
+  {
+    "case_id": "LOG-0008",
+    "title": "TLS 证书过期导致 x509 certificate has expired",
+    "error_type": "CertificateExpired",
+    "component": "tls",
+    "severity": "critical",
+    "error_signature": "x509: certificate has expired or is not yet valid: current time 2025-06-18T09:12:00+08:00 is after 2025-06-17T23:59:59Z\nSSL certificate problem: certificate has expired",
+    "symptom": "多个服务间调用同时报证书过期；浏览器访问入口提示证书无效，但证书文件看起来仍在。",
+    "environment": {
+      "ingress": "Nginx Ingress 1.10",
+      "cert_manager": "1.14",
+      "issuer": "Let's Encrypt",
+      "cluster": "Kubernetes 1.28"
+    },
+    "root_cause": "入口证书 90 天到期，cert-manager 的 ACME HTTP-01 校验因 Ingress 路径被安全策略拦截而失败，Certificate 资源一直处于 False 状态，未完成续期。",
+    "resolution": [
+      "用 openssl s_client -connect <domain>:443 -servername <domain> 查看 notAfter，确认证书确实过期。",
+      "执行 kubectl describe certificate <name> -n <ns>，查看 Renewal 时间和失败事件。",
+      "继续查看 kubectl describe order 与 kubectl describe challenge，定位 ACME 校验失败原因。",
+      "修复 Ingress 的 /.well-known/acme-challenge 路径放行策略，或改用 DNS-01 校验。",
+      "执行 kubectl cert-manager renew <cert-name> -n <ns> 强制续期，并配置到期前 30/14/7 天告警。"
+    ],
+    "verification": "openssl s_client 显示新的 notAfter；浏览器与内部调用均不再报证书错误；cert-manager Certificate 状态为 Ready=True。",
+    "tags": ["tls", "certificate", "cert-manager", "acme", "ingress"],
+    "source": "manual",
+    "updated_at": "2025-07-01"
+  }
+]

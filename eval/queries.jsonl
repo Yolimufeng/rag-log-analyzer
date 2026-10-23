@@ -1,0 +1,12 @@
+{"query": "Back-off restarting failed container payment-api Last State: Terminated Reason: OOMKilled Exit Code: 137", "expected_case_ids": ["LOG-0001"]}
+{"query": "容器退出码 137，Pod 反复重启，节点内存还很充足", "expected_case_ids": ["LOG-0001"]}
+{"query": "upstream prematurely closed connection while reading response header from upstream，订单接口偶发 502", "expected_case_ids": ["LOG-0002"]}
+{"query": "网关 502，后端批量任务期间 Full GC 停顿，Nginx 报 upstream 提前关闭", "expected_case_ids": ["LOG-0002"]}
+{"query": "ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction", "expected_case_ids": ["LOG-0003"]}
+{"query": "OOM command not allowed when used memory > 'maxmemory'，Redis 无法写入 session", "expected_case_ids": ["LOG-0004"]}
+{"query": "java.lang.OutOfMemoryError: GC overhead limit exceeded，导出接口全量加载数据", "expected_case_ids": ["LOG-0005"]}
+{"query": "ModuleNotFoundError: No module named 'requests'，cron 定时任务失败但手工执行正常", "expected_case_ids": ["LOG-0006"]}
+{"query": "write /var/lib/docker/overlay2/...: no space left on device，docker build 失败", "expected_case_ids": ["LOG-0007"]}
+{"query": "x509: certificate has expired or is not yet valid，入口 HTTPS 证书失效", "expected_case_ids": ["LOG-0008"]}
+{"query": "Kafka consumer group 频繁 rebalance，消费延迟持续上涨", "expected_case_ids": []}
+{"query": "公司 VPN 登录提示账号或密码错误，无法连接内网", "expected_case_ids": []}

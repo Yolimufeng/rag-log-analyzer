@@ -1,0 +1,10 @@
+2026-06-12T03:14:07.221Z payment-api-7d9c8f6b5-x2k4n app[1]: 2026-06-12 11:14:07.219 ERROR 1 --- [http-nio-8080-exec-7] c.e.p.ExportController : export report failed
+2026-06-12T03:14:07.222Z payment-api-7d9c8f6b5-x2k4n app[1]: java.lang.OutOfMemoryError: Java heap space
+2026-06-12T03:14:07.223Z payment-api-7d9c8f6b5-x2k4n app[1]:     at com.example.payment.report.ExportService.loadAll(ExportService.java:88)
+2026-06-12T03:14:07.224Z payment-api-7d9c8f6b5-x2k4n app[1]:     at com.example.payment.report.ExportService.export(ExportService.java:41)
+2026-06-12T03:14:09.887Z payment-api-7d9c8f6b5-x2k4n kubelet[2210]: Container payment-api failed liveness probe, restarting
+2026-06-12T03:14:14.102Z payment-api-7d9c8f6b5-x2k4n kubelet[2210]: Back-off restarting failed container payment-api
+2026-06-12T03:14:14.110Z payment-api-7d9c8f6b5-x2k4n kubelet[2210]: Last State: Terminated
+2026-06-12T03:14:14.111Z payment-api-7d9c8f6b5-x2k4n kubelet[2210]: Reason: OOMKilled
+2026-06-12T03:14:14.112Z payment-api-7d9c8f6b5-x2k4n kubelet[2210]: Exit Code: 137
+2026-06-12T03:14:14.120Z payment-api-7d9c8f6b5-x2k4n kubelet[2210]: Node memory available: 3.2Gi
