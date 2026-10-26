@@ -56,17 +56,17 @@
 
 ## 环境要求
 
-| 项目 | 要求 | 开发时使用 |
-|---|---|---|
-| 操作系统 | Windows 10/11、Ubuntu 20.04+、macOS 12+ | Windows 11 |
-| Python | 3.10 ~ 3.12 | 3.11.5 |
-| Ollama | 0.5+ | 开发机未安装，使用离线模式验证 |
-| Embedding 模型 | `bge-m3`（约 1.2GB） | 未拉取 |
-| 生成模型 | `qwen2.5:7b-instruct`（约 4.7GB） | 未拉取 |
-| 内存 | 7B 模型 CPU 推理建议 16GB 以上 | — |
-| 显存 | 7B 模型 Q4 量化建议 8GB 以上 | — |
-| 磁盘 | 至少 5GB（模型 + 向量库） | — |
-| 端口 | 默认 `11434`（Ollama） | — |
+| 项目           | 要求                                    | 开发时使用           |
+| ------------ | ------------------------------------- | --------------- |
+| 操作系统         | Windows 10/11、Ubuntu 20.04+、macOS 12+ | Windows 11      |
+| Python       | 3.10 ~ 3.12                           | 3.11.5          |
+| Ollama       | 0.5+                                  | 开发机未安装，使用离线模式验证 |
+| Embedding 模型 | `bge-m3`（约 1.2GB）                     | 未拉取             |
+| 生成模型         | `qwen2.5:7b-instruct`（约 4.7GB）        | 未拉取             |
+| 内存           | 7B 模型 CPU 推理建议 16GB 以上                | —               |
+| 显存           | 7B 模型 Q4 量化建议 8GB 以上                  | —               |
+| 磁盘           | 至少 5GB（模型 + 向量库）                      | —               |
+| 端口           | 默认 `11434`（Ollama）                    | —               |
 
 依赖版本见 `requirements.txt`。开发时实际安装的是：
 
@@ -161,22 +161,22 @@ python -m src.cli eval --provider hash --threshold 0.45
 
 案例文件是 `data/cases.json`，顶层是数组，也可以写成 `{"cases": [...]}`。一条案例的字段：
 
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `case_id` | 是 | 稳定唯一 ID，例如 `LOG-0001` |
-| `title` | 是 | 一句话描述问题 |
-| `error_type` | 是 | 错误分类，例如 `OOMKilled`、`Deadlock`、`502` |
-| `component` | 是 | 所属组件，例如 `kubernetes`、`nginx`、`mysql` |
-| `severity` | 否 | `low` / `medium` / `high` / `critical`，默认 `medium` |
-| `error_signature` | 是 | 最典型的原始报错，保留错误码、退出码和关键堆栈 |
-| `symptom` | 否 | 现象、影响范围、触发规律 |
-| `environment` | 否 | 版本、运行时、部署方式等键值对 |
-| `root_cause` | 是 | 已验证的根因，不要写“可能是” |
-| `resolution` | 是 | 按执行顺序排列的处置步骤，至少一条 |
-| `verification` | 否 | 怎么确认已经恢复 |
-| `tags` | 否 | 标签，方便后续过滤 |
-| `source` | 否 | 来源，默认 `manual` |
-| `updated_at` | 否 | 更新时间，字符串即可 |
+| 字段                | 必填  | 说明                                                 |
+| ----------------- | --- | -------------------------------------------------- |
+| `case_id`         | 是   | 稳定唯一 ID，例如 `LOG-0001`                              |
+| `title`           | 是   | 一句话描述问题                                            |
+| `error_type`      | 是   | 错误分类，例如 `OOMKilled`、`Deadlock`、`502`               |
+| `component`       | 是   | 所属组件，例如 `kubernetes`、`nginx`、`mysql`               |
+| `severity`        | 否   | `low` / `medium` / `high` / `critical`，默认 `medium` |
+| `error_signature` | 是   | 最典型的原始报错，保留错误码、退出码和关键堆栈                            |
+| `symptom`         | 否   | 现象、影响范围、触发规律                                       |
+| `environment`     | 否   | 版本、运行时、部署方式等键值对                                    |
+| `root_cause`      | 是   | 已验证的根因，不要写“可能是”                                    |
+| `resolution`      | 是   | 按执行顺序排列的处置步骤，至少一条                                  |
+| `verification`    | 否   | 怎么确认已经恢复                                           |
+| `tags`            | 否   | 标签，方便后续过滤                                          |
+| `source`          | 否   | 来源，默认 `manual`                                     |
+| `updated_at`      | 否   | 更新时间，字符串即可                                         |
 
 示例：
 
@@ -279,30 +279,30 @@ python -m src.cli search --file examples/oom.log --no-llm
 
 退出码：
 
-| 退出码 | 含义 |
-|---|---|
-| `0` | 命中并成功输出 |
-| `2` | 未命中，已生成工单 |
+| 退出码 | 含义               |
+| --- | ---------------- |
+| `0` | 命中并成功输出          |
+| `2` | 未命中，已生成工单        |
 | `3` | Ollama 或生成模型调用失败 |
-| `1` | 参数、数据、检索等其他错误 |
+| `1` | 参数、数据、检索等其他错误    |
 
 ## 配置
 
 所有配置都可以通过 `.env` 或环境变量覆盖，默认值在 `src/config.py`。
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama 服务地址 |
-| `OLLAMA_EMBED_MODEL` | `bge-m3` | embedding 模型 |
-| `OLLAMA_LLM_MODEL` | `qwen2.5:7b-instruct` | 生成模型 |
-| `EMBEDDING_PROVIDER` | `ollama` | `ollama` 或 `hash` |
-| `TOP_K` | `3` | 返回案例数 |
-| `CANDIDATE_K` | `15` | 初始召回切片数 |
-| `SCORE_THRESHOLD` | `0.50` | 相似度阈值 |
-| `MAX_CHUNK_CHARS` | `600` | 单切片最大字符数 |
-| `CHUNK_OVERLAP` | `80` | 切片重叠字符数 |
-| `MAX_CONTEXT_CHARS` | `6000` | 生成时案例上下文总预算 |
-| `COLLECTION_PREFIX` | `log_cases` | 集合名前缀 |
+| 变量                   | 默认值                      | 说明                |
+| -------------------- | ------------------------ | ----------------- |
+| `OLLAMA_BASE_URL`    | `http://127.0.0.1:11434` | Ollama 服务地址       |
+| `OLLAMA_EMBED_MODEL` | `bge-m3`                 | embedding 模型      |
+| `OLLAMA_LLM_MODEL`   | `qwen2.5:7b-instruct`    | 生成模型              |
+| `EMBEDDING_PROVIDER` | `ollama`                 | `ollama` 或 `hash` |
+| `TOP_K`              | `3`                      | 返回案例数             |
+| `CANDIDATE_K`        | `15`                     | 初始召回切片数           |
+| `SCORE_THRESHOLD`    | `0.50`                   | 相似度阈值             |
+| `MAX_CHUNK_CHARS`    | `600`                    | 单切片最大字符数          |
+| `CHUNK_OVERLAP`      | `80`                     | 切片重叠字符数           |
+| `MAX_CONTEXT_CHARS`  | `6000`                   | 生成时案例上下文总预算       |
+| `COLLECTION_PREFIX`  | `log_cases`              | 集合名前缀             |
 
 集合名会自动拼上 provider 和模型名，例如 `log_cases_ollama_bge-m3`。换 embedding 模型会落到新集合，避免维度不一致。
 
@@ -326,14 +326,14 @@ python -m src.cli eval
 
 示例数据在 hash 模式下的结果（仅验证流程，不代表 `bge-m3` 效果）：
 
-| 阈值 | Hit@1 | Hit@3 | MRR | 转人工准确率 |
-|---|---|---|---|---|
-| 0.40 | 0.90 | 0.90 | 0.90 | 1.00 |
-| 0.45 | 0.90 | 0.90 | 0.90 | 1.00 |
-| 0.50 | 0.90 | 0.90 | 0.90 | 1.00 |
-| 0.55 | 0.90 | 0.90 | 0.90 | 1.00 |
-| 0.60 | 0.80 | 0.80 | 0.80 | 1.00 |
-| 0.65 | 0.70 | 0.70 | 0.70 | 1.00 |
+| 阈值   | Hit@1 | Hit@3 | MRR  | 转人工准确率 |
+| ---- | ----- | ----- | ---- | ------ |
+| 0.40 | 0.90  | 0.90  | 0.90 | 1.00   |
+| 0.45 | 0.90  | 0.90  | 0.90 | 1.00   |
+| 0.50 | 0.90  | 0.90  | 0.90 | 1.00   |
+| 0.55 | 0.90  | 0.90  | 0.90 | 1.00   |
+| 0.60 | 0.80  | 0.80  | 0.80 | 1.00   |
+| 0.65 | 0.70  | 0.70  | 0.70 | 1.00   |
 
 漏掉的那条是“容器退出码 137，Pod 反复重启”这种同义改写，hash 模式匹配不到，换 `bge-m3` 后会好一些。
 
@@ -351,11 +351,9 @@ python -m pytest -q
 ```text
 rag-log-analyzer/
 ├─ data/
-│  ├─ cases.json              # 示例案例
-│  └─ pending/                # 自动生成的人工工单
+│  └─cases.json              # 示例案例
 ├─ docs/
-│  ├─ ENVIRONMENT.md          # 环境安装、配置、阈值校准、排错
-│  └─ GITHUB_UPLOAD.md        # 上传 GitHub 的步骤
+│  └─ ENVIRONMENT.md          # 环境安装、配置、阈值校准、排错
 ├─ eval/
 │  └─ queries.jsonl           # 评测查询
 ├─ examples/
@@ -374,7 +372,6 @@ rag-log-analyzer/
 │  ├─ doctor.py               # 环境自检
 │  └─ cli.py                  # 命令行入口
 ├─ tests/
-├─ .env.example
 ├─ requirements.txt
 ├─ requirements-dev.txt
 ├─ pyproject.toml
@@ -405,29 +402,6 @@ rag-log-analyzer/
 - 生成结果需要人工复核，不能直接当操作手册。
 - 没有鉴权，别直接暴露到公网。
 
-## 上传 GitHub
-
-仓库里已经准备好 `.gitignore`、`LICENSE` 和示例配置。上传前建议先看 [docs/GITHUB_UPLOAD.md](docs/GITHUB_UPLOAD.md)，里面包括清理生成物、初始化仓库、创建远程仓库和推送的命令。
-
-简单说，不要提交这些：
-
-```text
-.venv/
-storage/
-data/pending/
-__pycache__/
-.pytest_cache/
-.env
-```
-
-`storage/` 是本地向量库，`data/pending/` 是运行产生的工单，都不应该进仓库。
-
-如果不想用 Git，可以运行 `scripts/package.ps1` 生成一个干净的 zip：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\package.ps1
-```
-
-## License
+#### License
 
 MIT，见 [LICENSE](LICENSE)。
